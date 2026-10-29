@@ -414,3 +414,46 @@ input:focus, select:focus {
     padding: 20px;
   }
 }
+
+
+/* Modules containing a tutorial you've joined */
+
+.module-joined {
+  border: 2px solid #168451;
+  background: #f4fbf7;
+}
+
+.module-joined .module-header {
+  background: #f4fbf7;
+}
+
+.module-joined .module-header:hover {
+  background: #eaf6ee;
+}
+
+.module-joined .module-badge {
+  background: #d9f2e3;
+  color: #12683f;
+}
+
+.joined-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: #d9f2e3;
+  color: #12683f;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@media (max-width: 650px) {
+  .module-title {
+    flex-wrap: wrap;
+  }
+
+  .module-meta {
+    text-align: right;
+  }
+}

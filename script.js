@@ -39,14 +39,15 @@ const tutorialsRef = collection(db, "tutorials");
 
 const $ = (id) => document.getElementById(id);
 
-let userId = localStorage.getItem("tutorialUserId");
-
-if (!userId) {
-  userId = crypto.randomUUID();
-  localStorage.setItem("tutorialUserId", userId);
+function getUserId(name) {
+  return "name_" + name.trim().toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]/g, "");
 }
 
 let userName = localStorage.getItem("tutorialUserName") || "";
+let userId = userName ? getUserId(userName) : "";
+
 
 // ========================================
 // APPLICATION STATE
@@ -95,18 +96,22 @@ $("nameForm").addEventListener("submit", (event) => {
 
   const name = $("nameInput").value.trim();
 
-  if (!name) {
-    alert("Please enter your name.");
+  if (!name || !getUserId(name).slice(5)) {
+    alert("Please enter a valid name.");
     return;
   }
 
   userName = name;
+  userId = getUserId(name);
+
   localStorage.setItem("tutorialUserName", userName);
+  localStorage.setItem("tutorialUserId", userId);
 
   updateUserDisplay();
   nameDialog.close();
   renderModules();
 });
+
 
 nameDialog.addEventListener("cancel", (event) => {
   if (!userName) {
@@ -217,6 +222,18 @@ function createModuleCard(module) {
     return end > now;
   });
 
+  const joinedTutorials = upcomingTutorials.filter((tutorial) => {
+    const attendees = tutorial.attendees || {};
+    return Object.hasOwn(attendees, userId);
+  });
+
+  const hasJoined = joinedTutorials.length > 0;
+
+  if (hasJoined) {
+    card.classList.add("module-joined");
+  }
+
+
   const header = document.createElement("div");
   header.className = "module-header";
   header.setAttribute("role", "button");
@@ -238,11 +255,22 @@ function createModuleCard(module) {
   const meta = document.createElement("span");
   meta.className = "module-meta";
 
-  const count = upcomingTutorials.length;
-  meta.textContent =
-    `${count} upcoming ${count === 1 ? "tutorial" : "tutorials"}`;
+  const count = upcomingTutorials.length;  
+  meta.textContent = hasJoined
+    ? `${joinedTutorials.length} joined · ${count} upcoming`
+    : `${count} upcoming ${count === 1 ? "tutorial" : "tutorials"}`;
 
-  header.append(titleArea, meta);
+
+  
+  if (hasJoined) {
+    const joinedBadge = document.createElement("span");
+    joinedBadge.className = "joined-badge";
+    joinedBadge.textContent = "✓ Signed up";
+    titleArea.appendChild(joinedBadge);
+  }
+
+header.append(titleArea, meta);
+
 
   const content = document.createElement("div");
   content.className = "module-content";
