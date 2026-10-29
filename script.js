@@ -6,6 +6,7 @@ import {
   getFirestore,
   collection,
   doc,
+  setDoc,
   addDoc,
   onSnapshot,
   runTransaction,
@@ -28,14 +29,15 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+const modulesRef = collection(db, "modules");
 const tutorialsRef = collection(db, "tutorials");
 
 // ========================================
 // LOCAL USER
 // ========================================
 
-// Each browser gets its own random ID.
-// The ID stays the same when the user changes their name.
+const $ = (id) => document.getElementById(id);
 
 let userId = localStorage.getItem("tutorialUserId");
 
@@ -46,21 +48,24 @@ if (!userId) {
 
 let userName = localStorage.getItem("tutorialUserName") || "";
 
-const $ = (id) => document.getElementById(id);
+// ========================================
+// APPLICATION STATE
+// ========================================
 
-const nameDialog = $("nameDialog");
-const nameForm = $("nameForm");
-const tutorialDialog = $("tutorialDialog");
-const tutorialForm = $("tutorialForm");
-const tutorialList = $("tutorialList");
-const moduleFilter = $("moduleFilter");
-const statusMessage = $("statusMessage");
-
+let modules = [];
 let tutorials = [];
 let selectedCourse = "all";
+let selectedModuleId = null;
+
+const expandedModules = new Set();
+
+const moduleList = $("moduleList");
+const nameDialog = $("nameDialog");
+const moduleDialog = $("moduleDialog");
+const tutorialDialog = $("tutorialDialog");
 
 // ========================================
-// NAME ENTRY
+// NAME MANAGEMENT
 // ========================================
 
 function updateUserDisplay() {
@@ -71,7 +76,10 @@ function updateUserDisplay() {
 
 function openNameDialog() {
   $("nameInput").value = userName;
-  nameDialog.showModal();
+
+  if (!nameDialog.open) {
+    nameDialog.showModal();
+  }
 }
 
 updateUserDisplay();
@@ -82,7 +90,7 @@ if (!userName) {
 
 $("changeNameBtn").addEventListener("click", openNameDialog);
 
-nameForm.addEventListener("submit", (event) => {
+$("nameForm").addEventListener("submit", (event) => {
   event.preventDefault();
 
   const name = $("nameInput").value.trim();
@@ -97,10 +105,9 @@ nameForm.addEventListener("submit", (event) => {
 
   updateUserDisplay();
   nameDialog.close();
-  renderTutorials();
+  renderModules();
 });
 
-// Prevent closing the name dialog before a name is entered.
 nameDialog.addEventListener("cancel", (event) => {
   if (!userName) {
     event.preventDefault();
@@ -108,15 +115,33 @@ nameDialog.addEventListener("cancel", (event) => {
 });
 
 // ========================================
-// LIVE FIRESTORE UPDATES
+// FIRESTORE LIVE UPDATES
 // ========================================
+
+onSnapshot(
+  modulesRef,
+  (snapshot) => {
+    modules = snapshot.docs.map((item) => ({
+      id: item.id,
+      ...item.data()
+    }));
+
+    modules.sort((a, b) => a.id.localeCompare(b.id));
+
+    renderModules();
+    showStatus("");
+  },
+  (error) => {
+    showStatus("Could not load modules: " + error.message);
+  }
+);
 
 onSnapshot(
   tutorialsRef,
   (snapshot) => {
-    tutorials = snapshot.docs.map((document) => ({
-      id: document.id,
-      ...document.data()
+    tutorials = snapshot.docs.map((item) => ({
+      id: item.id,
+      ...item.data()
     }));
 
     tutorials.sort((a, b) => {
@@ -125,9 +150,7 @@ onSnapshot(
       return first.localeCompare(second);
     });
 
-    updateModuleFilter();
-    renderTutorials();
-    showStatus("");
+    renderModules();
   },
   (error) => {
     showStatus("Could not load tutorials: " + error.message);
@@ -135,7 +158,7 @@ onSnapshot(
 );
 
 // ========================================
-// COURSE AND MODULE FILTERS
+// COURSE FILTERS
 // ========================================
 
 document.querySelectorAll(".filter").forEach((button) => {
@@ -147,114 +170,158 @@ document.querySelectorAll(".filter").forEach((button) => {
     });
 
     button.classList.add("active");
-
-    moduleFilter.value = "all";
-    updateModuleFilter();
-    renderTutorials();
+    renderModules();
   });
 });
 
-moduleFilter.addEventListener("change", renderTutorials);
-
-function updateModuleFilter() {
-  const previousValue = moduleFilter.value;
-
-  const modules = [
-    ...new Set(
-      tutorials
-        .filter((tutorial) =>
-          selectedCourse === "all" ||
-          tutorial.course === selectedCourse
-        )
-        .map((tutorial) => tutorial.module)
-        .filter(Boolean)
-    )
-  ].sort();
-
-  moduleFilter.replaceChildren();
-  moduleFilter.add(new Option("All modules", "all"));
-
-  modules.forEach((moduleName) => {
-    moduleFilter.add(new Option(moduleName, moduleName));
-  });
-
-  if (modules.includes(previousValue)) {
-    moduleFilter.value = previousValue;
-  }
-}
-
 // ========================================
-// RENDER TUTORIALS
+// RENDER MODULES
 // ========================================
 
-function renderTutorials() {
-  tutorialList.replaceChildren();
+function renderModules() {
+  moduleList.replaceChildren();
 
-  if (!userName) {
-    showEmptyState("Enter your name to use the planner.");
+  const filtered = modules.filter((module) =>
+    selectedCourse === "all" ||
+    module.course === selectedCourse
+  );
+
+  if (filtered.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "empty-state";
+    empty.textContent = "No modules yet. Create one to get started.";
+    moduleList.appendChild(empty);
     return;
   }
+
+  filtered.forEach((module) => {
+    moduleList.appendChild(createModuleCard(module));
+  });
+}
+
+function createModuleCard(module) {
+  const card = document.createElement("article");
+  card.className = "module-card";
+
+  const moduleTutorials = tutorials.filter(
+    (tutorial) => tutorial.moduleId === module.id
+  );
 
   const now = new Date();
 
-  const filtered = tutorials.filter((tutorial) => {
-    const matchesCourse =
-      selectedCourse === "all" ||
-      tutorial.course === selectedCourse;
-
-    const matchesModule =
-      moduleFilter.value === "all" ||
-      tutorial.module === moduleFilter.value;
-
-    const endDateTime = new Date(
+  const upcomingTutorials = moduleTutorials.filter((tutorial) => {
+    const end = new Date(
       `${tutorial.date}T${tutorial.endTime}:00`
     );
 
-    return matchesCourse &&
-           matchesModule &&
-           endDateTime > now;
+    return end > now;
   });
 
-  if (filtered.length === 0) {
-    showEmptyState("No upcoming tutorials match your filters.");
-    return;
+  const header = document.createElement("div");
+  header.className = "module-header";
+  header.setAttribute("role", "button");
+  header.setAttribute("tabindex", "0");
+
+  const titleArea = document.createElement("div");
+  titleArea.className = "module-title";
+
+  const badge = document.createElement("span");
+  badge.className = "module-badge";
+  badge.textContent = module.id;
+
+  const description = document.createElement("span");
+  description.className = "module-description";
+  description.textContent = module.description || "";
+
+  titleArea.append(badge, description);
+
+  const meta = document.createElement("span");
+  meta.className = "module-meta";
+
+  const count = upcomingTutorials.length;
+  meta.textContent =
+    `${count} upcoming ${count === 1 ? "tutorial" : "tutorials"}`;
+
+  header.append(titleArea, meta);
+
+  const content = document.createElement("div");
+  content.className = "module-content";
+
+  const isExpanded = expandedModules.has(module.id);
+  content.classList.toggle("hidden", !isExpanded);
+  header.setAttribute("aria-expanded", String(isExpanded));
+
+  const toggleModule = () => {
+    if (expandedModules.has(module.id)) {
+      expandedModules.delete(module.id);
+    } else {
+      expandedModules.add(module.id);
+    }
+
+    renderModules();
+  };
+
+  header.addEventListener("click", toggleModule);
+
+  header.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggleModule();
+    }
+  });
+
+  const actions = document.createElement("div");
+  actions.className = "module-actions";
+
+  const addBtn = document.createElement("button");
+  addBtn.className = "btn primary";
+  addBtn.textContent = "+ Add tutorial";
+
+  addBtn.addEventListener("click", () => {
+    openTutorialDialog(module);
+  });
+
+  actions.appendChild(addBtn);
+  content.appendChild(actions);
+
+  const tutorialList = document.createElement("div");
+  tutorialList.className = "tutorial-list";
+
+  if (upcomingTutorials.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "empty-module";
+    empty.textContent = "No upcoming tutorials for this module.";
+    tutorialList.appendChild(empty);
+  } else {
+    upcomingTutorials.forEach((tutorial) => {
+      tutorialList.appendChild(createTutorialCard(tutorial));
+    });
   }
 
-  filtered.forEach((tutorial) => {
-    tutorialList.appendChild(createTutorialCard(tutorial));
-  });
+  content.appendChild(tutorialList);
+  card.append(header, content);
+
+  return card;
 }
+
+// ========================================
+// RENDER INDIVIDUAL TUTORIALS
+// ========================================
 
 function createTutorialCard(tutorial) {
   const card = document.createElement("article");
   card.className = "tutorial-card";
 
-  // Attendees are stored as an object:
-  // { browserId: "Student Name" }
-
   const attendees = tutorial.attendees || {};
   const attendeeIds = Object.keys(attendees);
-  const count = attendeeIds.length;
+
   const isJoined = Object.hasOwn(attendees, userId);
-
-  const top = document.createElement("div");
-  top.className = "card-top";
-
-  const badge = document.createElement("span");
-  badge.className = "module-badge";
-  badge.textContent = tutorial.module;
-
-  const courseLabel = document.createElement("span");
-  courseLabel.className = "course-label";
-  courseLabel.textContent = tutorial.course;
-
-  top.append(badge, courseLabel);
 
   const title = document.createElement("h3");
   title.textContent = tutorial.topic;
 
   const details = document.createElement("div");
-  details.className = "details";
+  details.className = "tutorial-details";
 
   const dateText = new Date(
     `${tutorial.date}T12:00:00`
@@ -276,6 +343,8 @@ function createTutorialCard(tutorial) {
   const attendeeSection = document.createElement("div");
   attendeeSection.className = "attendees";
 
+  const count = attendeeIds.length;
+
   const countText = document.createElement("strong");
   countText.textContent =
     `${count} ${count === 1 ? "student" : "students"} attending`;
@@ -283,44 +352,45 @@ function createTutorialCard(tutorial) {
   const namesText = document.createElement("p");
   namesText.textContent = count
     ? Object.values(attendees).join(", ")
-    : "Nobody has signed up yet.";
+    : "Nobody signed up yet.";
 
   attendeeSection.append(countText, namesText);
 
-  const actions = document.createElement("div");
-  actions.className = "card-actions";
-
-  const actionBtn = document.createElement("button");
-  actionBtn.className = "btn";
+  const button = document.createElement("button");
+  button.className = "btn";
 
   if (isJoined) {
-    actionBtn.textContent = "Leave tutorial";
-    actionBtn.classList.add("secondary");
-
-    actionBtn.addEventListener("click", async () => {
-      actionBtn.disabled = true;
-      await leaveTutorial(tutorial.id);
-      actionBtn.disabled = false;
-    });
+    button.textContent = "Leave tutorial";
+    button.classList.add("secondary");
   } else {
-    actionBtn.textContent = "Join tutorial";
-    actionBtn.classList.add("primary");
-
-    actionBtn.addEventListener("click", async () => {
-      actionBtn.disabled = true;
-      await joinTutorial(tutorial.id);
-      actionBtn.disabled = false;
-    });
+    button.textContent = "Join tutorial";
+    button.classList.add("primary");
   }
 
-  actions.appendChild(actionBtn);
+  button.addEventListener("click", async () => {
+    if (!userName) {
+      openNameDialog();
+      return;
+    }
+
+    button.disabled = true;
+
+    try {
+      if (isJoined) {
+        await leaveTutorial(tutorial.id);
+      } else {
+        await joinTutorial(tutorial.id);
+      }
+    } finally {
+      button.disabled = false;
+    }
+  });
 
   card.append(
-    top,
     title,
     details,
     attendeeSection,
-    actions
+    button
   );
 
   return card;
@@ -328,62 +398,115 @@ function createTutorialCard(tutorial) {
 
 function addDetail(container, label, value) {
   const paragraph = document.createElement("p");
-  const strong = document.createElement("strong");
 
+  const strong = document.createElement("strong");
   strong.textContent = `${label}: `;
 
-  paragraph.append(
-    strong,
-    document.createTextNode(value)
-  );
-
+  paragraph.append(strong, document.createTextNode(value));
   container.appendChild(paragraph);
 }
 
-function showEmptyState(message) {
-  const element = document.createElement("p");
-  element.className = "empty-state";
-  element.textContent = message;
-  tutorialList.appendChild(element);
-}
-
 function showStatus(message) {
-  statusMessage.textContent = message;
+  $("statusMessage").textContent = message;
 }
 
 // ========================================
-// CREATE TUTORIAL
+// DIALOG CONTROLS
 // ========================================
 
-$("newTutorialBtn").addEventListener("click", () => {
+document.querySelectorAll("[data-close]").forEach((button) => {
+  button.addEventListener("click", () => {
+    $(button.dataset.close).close();
+  });
+});
+
+// ========================================
+// CREATE MODULE
+// ========================================
+
+$("newModuleBtn").addEventListener("click", () => {
   if (!userName) {
     openNameDialog();
     return;
   }
 
-  tutorialForm.reset();
-  $("dateInput").min = getLocalDate();
-  tutorialDialog.showModal();
+  $("moduleForm").reset();
+  moduleDialog.showModal();
 });
 
-$("closeDialogBtn").addEventListener("click", () => {
-  tutorialDialog.close();
-});
-
-$("cancelDialogBtn").addEventListener("click", () => {
-  tutorialDialog.close();
-});
-
-tutorialForm.addEventListener("submit", async (event) => {
+$("moduleForm").addEventListener("submit", async (event) => {
   event.preventDefault();
 
+  const course = $("courseInput").value;
+  const moduleCode = $("moduleInput").value.trim().toUpperCase();
+  const description = $("moduleDescriptionInput").value.trim();
+
+  if (!["A1", "A2", "A3", "A4"].includes(course)) {
+    alert("Please select a valid course.");
+    return;
+  }
+
+  if (!new RegExp(`^${course}[A-Z0-9]+$`).test(moduleCode)) {
+    alert(`Module must start with ${course}, e.g. ${course}A.`);
+    return;
+  }
+
+  if (modules.some((module) => module.id === moduleCode)) {
+    alert("This module already exists.");
+    return;
+  }
+
+  const button = $("createModuleBtn");
+  button.disabled = true;
+
+  try {
+    await setDoc(doc(db, "modules", moduleCode), {
+      course,
+      description,
+      createdBy: userId,
+      createdAt: serverTimestamp()
+    });
+
+    expandedModules.add(moduleCode);
+    moduleDialog.close();
+    $("moduleForm").reset();
+
+    showStatus("Module created successfully.");
+  } catch (error) {
+    alert("Could not create module: " + error.message);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+// ========================================
+// CREATE TUTORIAL SLOT
+// ========================================
+
+function openTutorialDialog(module) {
   if (!userName) {
     openNameDialog();
     return;
   }
 
-  const course = $("courseInput").value;
-  const moduleName = $("moduleInput").value.trim().toUpperCase();
+  selectedModuleId = module.id;
+
+  $("tutorialForm").reset();
+  $("selectedModuleLabel").textContent =
+    `Module: ${module.id}`;
+
+  $("dateInput").min = getLocalDate();
+
+  tutorialDialog.showModal();
+}
+
+$("tutorialForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!userName || !selectedModuleId) {
+    return;
+  }
+
   const topic = $("topicInput").value.trim();
   const date = $("dateInput").value;
   const startTime = $("startTimeInput").value;
@@ -391,17 +514,7 @@ tutorialForm.addEventListener("submit", async (event) => {
   const location = $("locationInput").value.trim();
   const joinCreator = $("joinCreatorInput").checked;
 
-  if (!["A1", "A2", "A3", "A4"].includes(course)) {
-    alert("Please select a valid course.");
-    return;
-  }
-
-  if (!new RegExp(`^${course}[A-Z0-9]+$`).test(moduleName)) {
-    alert(`Module must start with ${course}, e.g. ${course}A.`);
-    return;
-  }
-
-  if (!topic || !location || !date || !startTime || !endTime) {
+  if (!topic || !date || !startTime || !endTime || !location) {
     alert("Please complete all fields.");
     return;
   }
@@ -411,9 +524,9 @@ tutorialForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  const startDateTime = new Date(`${date}T${startTime}:00`);
+  const start = new Date(`${date}T${startTime}:00`);
 
-  if (startDateTime <= new Date()) {
+  if (start <= new Date()) {
     alert("Please choose a future start time.");
     return;
   }
@@ -422,33 +535,33 @@ tutorialForm.addEventListener("submit", async (event) => {
     ? { [userId]: userName }
     : {};
 
-  const createBtn = $("createBtn");
-  createBtn.disabled = true;
-  createBtn.textContent = "Creating...";
+  const button = $("createTutorialBtn");
+  button.disabled = true;
 
   try {
     await addDoc(tutorialsRef, {
-      course,
-      module: moduleName,
+      moduleId: selectedModuleId,
       topic,
       date,
       startTime,
       endTime,
       location,
+      attendees,
       createdBy: userId,
       createdByName: userName,
-      attendees,
       createdAt: serverTimestamp()
     });
 
+    expandedModules.add(selectedModuleId);
+
     tutorialDialog.close();
-    tutorialForm.reset();
-    showStatus("Tutorial created successfully.");
+    $("tutorialForm").reset();
+
+    showStatus("Tutorial added successfully.");
   } catch (error) {
-    alert("Could not create tutorial: " + error.message);
+    alert("Could not add tutorial: " + error.message);
   } finally {
-    createBtn.disabled = false;
-    createBtn.textContent = "Create tutorial";
+    button.disabled = false;
   }
 });
 
@@ -457,11 +570,6 @@ tutorialForm.addEventListener("submit", async (event) => {
 // ========================================
 
 async function joinTutorial(tutorialId) {
-  if (!userName) {
-    openNameDialog();
-    return;
-  }
-
   const tutorialDoc = doc(db, "tutorials", tutorialId);
 
   try {
@@ -479,12 +587,12 @@ async function joinTutorial(tutorialId) {
         throw new Error("You are already signed up.");
       }
 
-      const tutorialEnd = new Date(
+      const end = new Date(
         `${tutorial.date}T${tutorial.endTime}:00`
       );
 
-      if (tutorialEnd <= new Date()) {
-        throw new Error("This tutorial has already ended.");
+      if (end <= new Date()) {
+        throw new Error("This tutorial has ended.");
       }
 
       transaction.update(tutorialDoc, {
@@ -497,7 +605,7 @@ async function joinTutorial(tutorialId) {
 
     showStatus("You have joined the tutorial.");
   } catch (error) {
-    alert("Could not join: " + error.message);
+    alert("Could not join tutorial: " + error.message);
   }
 }
 
@@ -516,8 +624,9 @@ async function leaveTutorial(tutorialId) {
         throw new Error("Tutorial no longer exists.");
       }
 
-      const tutorial = snapshot.data();
-      const attendees = { ...(tutorial.attendees || {}) };
+      const attendees = {
+        ...(snapshot.data().attendees || {})
+      };
 
       if (!Object.hasOwn(attendees, userId)) {
         throw new Error("You are not signed up.");
@@ -532,7 +641,7 @@ async function leaveTutorial(tutorialId) {
 
     showStatus("You have left the tutorial.");
   } catch (error) {
-    alert("Could not leave: " + error.message);
+    alert("Could not leave tutorial: " + error.message);
   }
 }
 
@@ -542,6 +651,7 @@ async function leaveTutorial(tutorialId) {
 
 function getLocalDate() {
   const now = new Date();
+
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");

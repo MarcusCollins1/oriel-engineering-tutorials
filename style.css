@@ -66,7 +66,7 @@ h1 {
   color: var(--muted);
 }
 
-.auth-area {
+.user-area {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -74,13 +74,13 @@ h1 {
 }
 
 #userName {
-  font-size: 13px;
   color: var(--muted);
+  font-size: 14px;
 }
 
 .container {
   max-width: 1100px;
-  margin: 0 auto;
+  margin: auto;
   padding: 38px 24px;
 }
 
@@ -137,7 +137,6 @@ h1 {
   display: flex;
   gap: 9px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
 }
 
 .filter {
@@ -150,32 +149,9 @@ h1 {
 }
 
 .filter.active {
-  color: white;
   background: var(--primary);
   border-color: var(--primary);
-}
-
-.filter-options {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-.filter-options select {
-  width: 210px;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.checkbox-label input {
-  width: auto;
+  color: white;
 }
 
 .status-message {
@@ -187,94 +163,141 @@ h1 {
   display: none;
 }
 
-.tutorial-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 18px;
+.module-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.tutorial-card {
+.module-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 22px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  overflow: hidden;
 }
 
-.card-top {
+.module-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 20px 22px;
+  cursor: pointer;
+}
+
+.module-header:hover {
+  background: #fafbfd;
+}
+
+.module-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .module-badge {
-  display: inline-block;
   background: #e8eef8;
   color: var(--primary);
-  padding: 5px 10px;
-  border-radius: 7px;
-  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 14px;
   font-weight: 700;
 }
 
-.course-label {
+.module-description {
+  font-size: 13px;
   color: var(--muted);
-  font-size: 12px;
+}
+
+.module-meta {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.module-content {
+  border-top: 1px solid var(--border);
+  padding: 20px 22px;
+}
+
+.module-content.hidden {
+  display: none;
+}
+
+.module-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 18px;
+}
+
+.tutorial-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.tutorial-card {
+  background: #f9fafc;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .tutorial-card h3 {
-  font-size: 18px;
+  font-size: 16px;
   margin: 0;
   overflow-wrap: anywhere;
 }
 
-.details {
+.tutorial-details {
+  font-size: 13px;
   color: var(--muted);
-  font-size: 14px;
 }
 
-.details p {
+.tutorial-details p {
   margin: 5px 0;
   overflow-wrap: anywhere;
 }
 
 .attendees {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
   font-size: 13px;
   color: var(--muted);
   overflow-wrap: anywhere;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
 }
 
 .attendees strong {
   display: block;
   color: var(--text);
-  margin-bottom: 6px;
+  margin-bottom: 5px;
 }
 
 .attendees p {
   margin: 0;
 }
 
-.card-actions {
+.tutorial-card .btn {
   margin-top: auto;
-}
-
-.card-actions .btn {
   width: 100%;
 }
 
 .empty-state {
-  grid-column: 1 / -1;
-  padding: 50px 20px;
+  padding: 35px 20px;
+  text-align: center;
   background: white;
   border: 1px dashed var(--border);
   border-radius: var(--radius);
-  text-align: center;
   color: var(--muted);
+}
+
+.empty-module {
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+  padding: 20px;
 }
 
 .modal {
@@ -309,7 +332,7 @@ h1 {
   color: var(--muted);
 }
 
-#tutorialForm label:not(.checkbox-label) {
+.modal label:not(.checkbox-label) {
   display: block;
   margin: 15px 0 6px;
   font-size: 13px;
@@ -336,8 +359,17 @@ input:focus, select:focus {
   gap: 14px;
 }
 
-.creator-checkbox {
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   margin-top: 20px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.checkbox-label input {
+  width: auto;
 }
 
 .modal-actions {
@@ -345,6 +377,11 @@ input:focus, select:focus {
   justify-content: flex-end;
   gap: 10px;
   margin-top: 26px;
+}
+
+.selected-module {
+  font-weight: 600;
+  color: var(--primary);
 }
 
 @media (max-width: 650px) {
@@ -361,50 +398,19 @@ input:focus, select:focus {
     font-size: 24px;
   }
 
-  .auth-area {
-    justify-content: space-between;
+  .module-header {
+    padding: 16px;
   }
 
-  .tutorial-grid {
+  .module-content {
+    padding: 16px;
+  }
+
+  .tutorial-list {
     grid-template-columns: 1fr;
   }
 
   .modal {
     padding: 20px;
   }
-}
-
-
-/* Name entry popup */
-
-#nameDialog {
-  width: min(95vw, 420px);
-}
-
-#nameDialog h2 {
-  margin-bottom: 10px;
-}
-
-#nameDialog p {
-  color: var(--muted);
-  margin-bottom: 20px;
-}
-
-#nameDialog label {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-#nameDialog input {
-  width: 100%;
-}
-
-#nameDialog .modal-actions {
-  margin-top: 22px;
-}
-
-#nameDialog .btn {
-  min-width: 110px;
 }
