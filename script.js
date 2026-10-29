@@ -3,14 +3,6 @@ import { initializeApp } from
   "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 
 import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signOut,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-
-import {
   getFirestore,
   collection,
   doc,
@@ -21,126 +13,129 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
 // ========================================
-// 1. FIREBASE CONFIGURATION
+// FIREBASE CONFIGURATION
 // ========================================
 
 const firebaseConfig = {
-    apiKey: "AIzaSyA_CXSZVz6meJgcJyktktWNmPtLmeFNXn0",
-    authDomain: "marcus-collins-github-website.firebaseapp.com",
-    projectId: "marcus-collins-github-website",
-    storageBucket: "marcus-collins-github-website.firebasestorage.app",
-    messagingSenderId: "328004594228",
-    appId: "1:328004594228:web:47074e07c446a328bbf861",
-    measurementId: "G-6M9HBX4E3Z"
+  apiKey: "AIzaSyA_CXSZVz6meJgcJyktktWNmPtLmeFNXn0",
+  authDomain: "marcus-collins-github-website.firebaseapp.com",
+  projectId: "marcus-collins-github-website",
+  storageBucket: "marcus-collins-github-website.firebasestorage.app",
+  messagingSenderId: "328004594228",
+  appId: "1:328004594228:web:47074e07c446a328bbf861",
+  measurementId: "G-6M9HBX4E3Z"
 };
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 const db = getFirestore(app);
-
-const provider = new GoogleAuthProvider();
 const tutorialsRef = collection(db, "tutorials");
 
 // ========================================
-// 2. APPLICATION STATE
+// LOCAL USER
 // ========================================
 
-let currentUser = null;
-let tutorials = [];
-let selectedCourse = "all";
-let unsubscribeTutorials = null;
+// Each browser gets its own random ID.
+// The ID stays the same when the user changes their name.
+
+let userId = localStorage.getItem("tutorialUserId");
+
+if (!userId) {
+  userId = crypto.randomUUID();
+  localStorage.setItem("tutorialUserId", userId);
+}
+
+let userName = localStorage.getItem("tutorialUserName") || "";
 
 const $ = (id) => document.getElementById(id);
 
-const loginBtn = $("loginBtn");
-const logoutBtn = $("logoutBtn");
-const newTutorialBtn = $("newTutorialBtn");
+const nameDialog = $("nameDialog");
+const nameForm = $("nameForm");
 const tutorialDialog = $("tutorialDialog");
 const tutorialForm = $("tutorialForm");
 const tutorialList = $("tutorialList");
 const moduleFilter = $("moduleFilter");
 const statusMessage = $("statusMessage");
 
+let tutorials = [];
+let selectedCourse = "all";
+
 // ========================================
-// 3. GOOGLE AUTHENTICATION
+// NAME ENTRY
 // ========================================
 
-loginBtn.addEventListener("click", async () => {
-  try {
-    await signInWithPopup(auth, provider);
-  } catch (error) {
-    showStatus("Sign-in failed: " + error.message);
-  }
-});
-
-logoutBtn.addEventListener("click", async () => {
-  try {
-    await signOut(auth);
-  } catch (error) {
-    showStatus(error.message);
-  }
-});
-
-onAuthStateChanged(auth, (user) => {
-  currentUser = user;
-
-  loginBtn.classList.toggle("hidden", !!user);
-  logoutBtn.classList.toggle("hidden", !user);
-  newTutorialBtn.classList.toggle("hidden", !user);
-
-  $("userName").textContent = user
-    ? user.displayName || user.email
+function updateUserDisplay() {
+  $("userName").textContent = userName
+    ? `Hello, ${userName}`
     : "";
-
-  // Stop listening to the previous account's data.
-  if (unsubscribeTutorials) {
-    unsubscribeTutorials();
-    unsubscribeTutorials = null;
-  }
-
-  tutorials = [];
-  renderTutorials();
-
-  if (user) {
-    subscribeToTutorials();
-  } else {
-    showStatus("Sign in to view and manage tutorials.");
-  }
-});
-
-// ========================================
-// 4. LIVE FIRESTORE UPDATES
-// ========================================
-
-function subscribeToTutorials() {
-  unsubscribeTutorials = onSnapshot(
-    tutorialsRef,
-    (snapshot) => {
-      tutorials = snapshot.docs.map((document) => ({
-        id: document.id,
-        ...document.data()
-      }));
-
-      tutorials.sort((a, b) => {
-        const first = `${a.date}T${a.time}`;
-        const second = `${b.date}T${b.time}`;
-        return first.localeCompare(second);
-      });
-
-      updateModuleFilter();
-      renderTutorials();
-      showStatus("");
-    },
-    (error) => {
-      showStatus(
-        "Could not load tutorials: " + error.message
-      );
-    }
-  );
 }
 
+function openNameDialog() {
+  $("nameInput").value = userName;
+  nameDialog.showModal();
+}
+
+updateUserDisplay();
+
+if (!userName) {
+  openNameDialog();
+}
+
+$("changeNameBtn").addEventListener("click", openNameDialog);
+
+nameForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  const name = $("nameInput").value.trim();
+
+  if (!name) {
+    alert("Please enter your name.");
+    return;
+  }
+
+  userName = name;
+  localStorage.setItem("tutorialUserName", userName);
+
+  updateUserDisplay();
+  nameDialog.close();
+  renderTutorials();
+});
+
+// Prevent closing the name dialog before a name is entered.
+nameDialog.addEventListener("cancel", (event) => {
+  if (!userName) {
+    event.preventDefault();
+  }
+});
+
 // ========================================
-// 5. COURSE AND MODULE FILTERS
+// LIVE FIRESTORE UPDATES
+// ========================================
+
+onSnapshot(
+  tutorialsRef,
+  (snapshot) => {
+    tutorials = snapshot.docs.map((document) => ({
+      id: document.id,
+      ...document.data()
+    }));
+
+    tutorials.sort((a, b) => {
+      const first = `${a.date}T${a.startTime}`;
+      const second = `${b.date}T${b.startTime}`;
+      return first.localeCompare(second);
+    });
+
+    updateModuleFilter();
+    renderTutorials();
+    showStatus("");
+  },
+  (error) => {
+    showStatus("Could not load tutorials: " + error.message);
+  }
+);
+
+// ========================================
+// COURSE AND MODULE FILTERS
 // ========================================
 
 document.querySelectorAll(".filter").forEach((button) => {
@@ -172,13 +167,12 @@ function updateModuleFilter() {
           tutorial.course === selectedCourse
         )
         .map((tutorial) => tutorial.module)
+        .filter(Boolean)
     )
   ].sort();
 
   moduleFilter.replaceChildren();
-
-  const allOption = new Option("All modules", "all");
-  moduleFilter.add(allOption);
+  moduleFilter.add(new Option("All modules", "all"));
 
   modules.forEach((moduleName) => {
     moduleFilter.add(new Option(moduleName, moduleName));
@@ -190,14 +184,14 @@ function updateModuleFilter() {
 }
 
 // ========================================
-// 6. RENDER TUTORIAL CARDS
+// RENDER TUTORIALS
 // ========================================
 
 function renderTutorials() {
   tutorialList.replaceChildren();
 
-  if (!currentUser) {
-    showEmptyState("Sign in to see upcoming tutorials.");
+  if (!userName) {
+    showEmptyState("Enter your name to use the planner.");
     return;
   }
 
@@ -235,8 +229,13 @@ function createTutorialCard(tutorial) {
   const card = document.createElement("article");
   card.className = "tutorial-card";
 
-  const count = tutorial.attendees.length;
-  const isJoined = tutorial.attendees.includes(currentUser.uid);
+  // Attendees are stored as an object:
+  // { browserId: "Student Name" }
+
+  const attendees = tutorial.attendees || {};
+  const attendeeIds = Object.keys(attendees);
+  const count = attendeeIds.length;
+  const isJoined = Object.hasOwn(attendees, userId);
 
   const top = document.createElement("div");
   top.className = "card-top";
@@ -267,13 +266,11 @@ function createTutorialCard(tutorial) {
   });
 
   addDetail(details, "Date", dateText);
-
   addDetail(
     details,
     "Time",
     `${tutorial.startTime} – ${tutorial.endTime}`
   );
-
   addDetail(details, "Location", tutorial.location);
 
   const attendeeSection = document.createElement("div");
@@ -283,13 +280,9 @@ function createTutorialCard(tutorial) {
   countText.textContent =
     `${count} ${count === 1 ? "student" : "students"} attending`;
 
-  const names = tutorial.attendees.map((uid) => {
-    return tutorial.attendeeNames?.[uid] || "Student";
-  });
-
   const namesText = document.createElement("p");
-  namesText.textContent = names.length
-    ? names.join(", ")
+  namesText.textContent = count
+    ? Object.values(attendees).join(", ")
     : "Nobody has signed up yet.";
 
   attendeeSection.append(countText, namesText);
@@ -335,11 +328,15 @@ function createTutorialCard(tutorial) {
 
 function addDetail(container, label, value) {
   const paragraph = document.createElement("p");
-
   const strong = document.createElement("strong");
+
   strong.textContent = `${label}: `;
 
-  paragraph.append(strong, document.createTextNode(value));
+  paragraph.append(
+    strong,
+    document.createTextNode(value)
+  );
+
   container.appendChild(paragraph);
 }
 
@@ -355,11 +352,14 @@ function showStatus(message) {
 }
 
 // ========================================
-// 7. CREATE A TUTORIAL
+// CREATE TUTORIAL
 // ========================================
 
-newTutorialBtn.addEventListener("click", () => {
-  if (!currentUser) return;
+$("newTutorialBtn").addEventListener("click", () => {
+  if (!userName) {
+    openNameDialog();
+    return;
+  }
 
   tutorialForm.reset();
   $("dateInput").min = getLocalDate();
@@ -377,8 +377,10 @@ $("cancelDialogBtn").addEventListener("click", () => {
 tutorialForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
-  const user = currentUser;
-  if (!user) return;
+  if (!userName) {
+    openNameDialog();
+    return;
+  }
 
   const course = $("courseInput").value;
   const moduleName = $("moduleInput").value.trim().toUpperCase();
@@ -409,19 +411,15 @@ tutorialForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  const startDateTime = new Date(
-    `${date}T${startTime}:00`
-  );
+  const startDateTime = new Date(`${date}T${startTime}:00`);
 
   if (startDateTime <= new Date()) {
     alert("Please choose a future start time.");
     return;
   }
 
-  const attendees = joinCreator ? [user.uid] : [];
-
-  const attendeeNames = joinCreator
-    ? { [user.uid]: user.displayName || "Student" }
+  const attendees = joinCreator
+    ? { [userId]: userName }
     : {};
 
   const createBtn = $("createBtn");
@@ -437,15 +435,14 @@ tutorialForm.addEventListener("submit", async (event) => {
       startTime,
       endTime,
       location,
-      createdBy: user.uid,
+      createdBy: userId,
+      createdByName: userName,
       attendees,
-      attendeeNames,
       createdAt: serverTimestamp()
     });
 
     tutorialDialog.close();
     tutorialForm.reset();
-
     showStatus("Tutorial created successfully.");
   } catch (error) {
     alert("Could not create tutorial: " + error.message);
@@ -456,14 +453,12 @@ tutorialForm.addEventListener("submit", async (event) => {
 });
 
 // ========================================
-// 8. JOIN A TUTORIAL
+// JOIN TUTORIAL
 // ========================================
 
 async function joinTutorial(tutorialId) {
-  const user = currentUser;
-
-  if (!user) {
-    alert("Please sign in first.");
+  if (!userName) {
+    openNameDialog();
     return;
   }
 
@@ -478,9 +473,9 @@ async function joinTutorial(tutorialId) {
       }
 
       const tutorial = snapshot.data();
-      const attendees = tutorial.attendees || [];
+      const attendees = tutorial.attendees || {};
 
-      if (attendees.includes(user.uid)) {
+      if (Object.hasOwn(attendees, userId)) {
         throw new Error("You are already signed up.");
       }
 
@@ -493,10 +488,9 @@ async function joinTutorial(tutorialId) {
       }
 
       transaction.update(tutorialDoc, {
-        attendees: [...attendees, user.uid],
-        attendeeNames: {
-          ...tutorial.attendeeNames,
-          [user.uid]: user.displayName || "Student"
+        attendees: {
+          ...attendees,
+          [userId]: userName
         }
       });
     });
@@ -508,13 +502,10 @@ async function joinTutorial(tutorialId) {
 }
 
 // ========================================
-// 9. LEAVE A TUTORIAL
+// LEAVE TUTORIAL
 // ========================================
 
 async function leaveTutorial(tutorialId) {
-  const user = currentUser;
-  if (!user) return;
-
   const tutorialDoc = doc(db, "tutorials", tutorialId);
 
   try {
@@ -526,25 +517,16 @@ async function leaveTutorial(tutorialId) {
       }
 
       const tutorial = snapshot.data();
-      const attendees = tutorial.attendees || [];
+      const attendees = { ...(tutorial.attendees || {}) };
 
-      if (!attendees.includes(user.uid)) {
-        throw new Error("You are not in this tutorial.");
+      if (!Object.hasOwn(attendees, userId)) {
+        throw new Error("You are not signed up.");
       }
 
-      const updatedAttendees = attendees.filter(
-        (uid) => uid !== user.uid
-      );
-
-      const updatedNames = {
-        ...tutorial.attendeeNames
-      };
-
-      delete updatedNames[user.uid];
+      delete attendees[userId];
 
       transaction.update(tutorialDoc, {
-        attendees: updatedAttendees,
-        attendeeNames: updatedNames
+        attendees
       });
     });
 
@@ -555,12 +537,11 @@ async function leaveTutorial(tutorialId) {
 }
 
 // ========================================
-// 10. DATE HELPER
+// DATE HELPER
 // ========================================
 
 function getLocalDate() {
   const now = new Date();
-
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");

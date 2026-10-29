@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Oxford Engineering Tutorials</title>
   <link rel="stylesheet" href="style.css">
   <script type="module" src="script.js"></script>
@@ -18,11 +18,8 @@
 
       <div class="auth-area">
         <span id="userName"></span>
-        <button id="loginBtn" class="btn primary">
-          Sign in with Google
-        </button>
-        <button id="logoutBtn" class="btn secondary hidden">
-          Sign out
+        <button id="changeNameBtn" class="btn secondary">
+          Change name
         </button>
       </div>
     </div>
@@ -32,19 +29,16 @@
     <section class="intro">
       <div>
         <h2>Upcoming tutorials</h2>
-        <p>
-          Organise your tutorials, find available groups,
-          and sign up with your coursemates.
-        </p>
+        <p>Organise tutorials and sign up with your coursemates.</p>
       </div>
 
-      <button id="newTutorialBtn" class="btn primary hidden">
+      <button id="newTutorialBtn" class="btn primary">
         + New tutorial
       </button>
     </section>
 
     <section class="filters">
-      <div class="course-filters" id="courseFilters">
+      <div class="course-filters">
         <button class="filter active" data-course="all">All</button>
         <button class="filter" data-course="A1">A1</button>
         <button class="filter" data-course="A2">A2</button>
@@ -53,14 +47,9 @@
       </div>
 
       <div class="filter-options">
-        <select id="moduleFilter">
+        <select id="moduleFilter" aria-label="Filter by module">
           <option value="all">All modules</option>
         </select>
-
-        <label class="checkbox-label">
-          <input type="checkbox" id="availableOnly">
-          Available spaces only
-        </label>
       </div>
     </section>
 
@@ -70,6 +59,33 @@
       <p class="empty-state">Loading tutorials...</p>
     </section>
   </main>
+
+  <!-- NAME POPUP -->
+
+  <dialog id="nameDialog" class="modal">
+    <form id="nameForm">
+      <h2>Welcome!</h2>
+      <p>Enter your name to use the tutorial planner.</p>
+
+      <label for="nameInput">Your name</label>
+      <input
+        id="nameInput"
+        type="text"
+        placeholder="e.g. Marcus"
+        maxlength="40"
+        autocomplete="name"
+        required
+      >
+
+      <div class="modal-actions">
+        <button type="submit" class="btn primary">
+          Continue
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- CREATE TUTORIAL POPUP -->
 
   <dialog id="tutorialDialog" class="modal">
     <form id="tutorialForm">
@@ -92,46 +108,31 @@
 
       <label for="moduleInput">Module</label>
       <input id="moduleInput" type="text"
-             placeholder="e.g. A1A" maxlength="12"
-             pattern="[A-Za-z0-9]+"
-             required>
+             placeholder="e.g. A1A" maxlength="12" required>
 
       <label for="topicInput">Topic / Problem sheet</label>
       <input id="topicInput" type="text"
              placeholder="e.g. Problem Sheet 3"
              maxlength="100" required>
 
-      
-        <label for="dateInput">Date</label>
-        <input id="dateInput" type="date" required>
+      <label for="dateInput">Date</label>
+      <input id="dateInput" type="date" required>
 
-        <div class="form-row">
+      <div class="form-row">
         <div>
-            <label for="startTimeInput">Start time</label>
-            <input id="startTimeInput" type="time" required>
+          <label for="startTimeInput">Start time</label>
+          <input id="startTimeInput" type="time" required>
         </div>
-
         <div>
-            <label for="endTimeInput">End time</label>
-            <input id="endTimeInput" type="time" required>
+          <label for="endTimeInput">End time</label>
+          <input id="endTimeInput" type="time" required>
         </div>
-        </div>
+      </div>
 
-        <label for="locationInput">Location</label>
-        <input
-        id="locationInput"
-        type="text"
-        placeholder="e.g. College / Department"
-        maxlength="100"
-        required
-        >
-
-
-      <label for="capacityInput">Group size</label>
-      <select id="capacityInput">
-        <option value="2">2 students</option>
-        <option value="3" selected>3 students</option>
-      </select>
+      <label for="locationInput">Location</label>
+      <input id="locationInput" type="text"
+             placeholder="e.g. College / Department"
+             maxlength="100" required>
 
       <label class="checkbox-label creator-checkbox">
         <input type="checkbox" id="joinCreatorInput" checked>

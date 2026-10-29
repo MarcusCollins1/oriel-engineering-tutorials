@@ -1,119 +1,117 @@
 
 # Oxford Engineering Tutorial Planner
 
-A shared tutorial scheduling website for seven Oxford
+A simple tutorial scheduling website for Oxford
 engineering students.
 
 ## Features
 
-- Four courses: A1, A2, A3, A4
-- Custom modules, e.g. A1A, A1B, A2A
+- Courses A1, A2, A3 and A4
+- Custom modules such as A1A and A2B
 - Create tutorial slots
+- Start and end times
+- Unlimited tutorial signups
+- View attendees
 - Join and leave tutorials
-- Groups of 2 or 3 students
 - Real-time Firestore updates
-- Google Authentication
-- Responsive design
+- Name stored in localStorage
+- No login or authentication
+- Mobile-friendly layout
 
-## 1. Create a Firebase project
+## How it works
 
-Visit https://console.firebase.google.com/
+When someone visits the website for the first time,
+they enter their name.
 
-Create a new project.
+The website saves two values in localStorage:
 
-## 2. Enable Google Authentication
+- tutorialUserName
+- tutorialUserId
 
-In Firebase Console:
+The name identifies the student in the interface.
 
-Authentication > Sign-in method > Google > Enable
+The ID identifies their browser's signups.
 
-Add your GitHub Pages domain to the authorized
-domains list.
+Both values remain saved between visits unless
+the browser's site data is cleared.
 
-For example:
+## Firebase setup
 
-yourusername.github.io
+1. Open https://console.firebase.google.com/
+2. Select the existing Firebase project.
+3. Open Firestore Database.
+4. Open the Rules tab.
+5. Replace the rules with firestore.rules.
+6. Publish the rules.
 
-## 3. Create Firestore
+Firebase Authentication is not required.
 
-Go to:
+## GitHub Pages
 
-Firestore Database > Create database
+Upload the following files:
 
-Choose a database location and create the database.
-
-## 4. Configure the website
-
-Go to:
-
-Project settings > General > Your apps
-
-Register a Web app.
-
-Copy the firebaseConfig object into script.js.
-
-## 5. Configure security rules
-
-Open firestore.rules.
-
-Replace the seven example email addresses with
-the Google account addresses of your group.
-
-In Firebase Console:
-
-Firestore Database > Rules
-
-Paste the rules and publish them.
-
-Before publishing, test the rules using the
-Firebase Emulator or Rules Playground.
-
-## 6. Deploy to GitHub Pages
-
-Create a public GitHub repository.
-
-Upload:
 - index.html
 - style.css
 - script.js
 - firestore.rules
 - README.md
 
-Go to:
+Ensure the three website files are named exactly:
 
-Settings > Pages
+index.html
+style.css
+script.js
 
-Under Build and deployment:
-
-Source: Deploy from a branch
-Branch: main
-Folder: / (root)
-
-Save the settings.
-
-Your website will be available at:
+The website is hosted at:
 
 https://marcuscollins1.github.io/oriel-engineering-tutorials/
 
-## 7. Using the website
+## Creating tutorials
 
-1. Sign in with Google.
-2. Select a course.
-3. Click New tutorial to create a slot.
-4. Enter the module, topic, date, time and location.
-5. Choose a group size of 2 or 3.
-6. Other students can click Join tutorial.
-7. Students can leave a tutorial if necessary.
+1. Enter your name if prompted.
+2. Click New tutorial.
+3. Select the course.
+4. Enter the module.
+5. Enter the topic.
+6. Choose the date.
+7. Choose the start and end times.
+8. Enter the location.
+9. Click Create tutorial.
 
-Tutorials update automatically for everyone.
+## Joining tutorials
+
+Click Join tutorial on any upcoming tutorial.
+
+Your name will appear in the attendees list.
+
+Click Leave tutorial to remove yourself.
+
+There is no configured group-size limit.
+
+## Changing your name
+
+Click Change name in the header.
+
+Your new name is saved in localStorage.
+
+Existing attendee names in Firestore are not
+automatically updated when you change your name.
 
 ## Notes
 
-- GitHub Pages hosts the frontend.
-- Firestore stores tutorial data.
-- Firebase Authentication identifies students.
-- Firebase security rules control database access.
-- The Firebase web API key is public configuration,
-  not a secret.
-- Do not store Firebase Admin SDK credentials or
-  service account private keys in the repository.
+This is a trust-based website without authentication.
+
+Anyone with access to the public Firebase database
+can read tutorials and modify attendance.
+
+Browser IDs are not secure identities.
+
+Clearing localStorage generates a new browser ID,
+so old signups will no longer be recognised as yours.
+
+Existing Firestore documents using the previous
+attendees array format must be migrated or recreated.
+
+The website uses the browser's local time zone.
+
+Tutorials cannot currently be edited or deleted.
