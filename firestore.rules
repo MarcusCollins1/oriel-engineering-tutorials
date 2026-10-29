@@ -45,7 +45,6 @@ service cloud.firestore {
       allow create: if
         request.resource.data.keys().hasOnly([
           "moduleId",
-          "topic",
           "date",
           "startTime",
           "endTime",
@@ -57,7 +56,6 @@ service cloud.firestore {
         ])
         && request.resource.data.keys().hasAll([
           "moduleId",
-          "topic",
           "date",
           "startTime",
           "endTime",
@@ -71,9 +69,6 @@ service cloud.firestore {
         && exists(
           /databases/$(database)/documents/modules/$(request.resource.data.moduleId)
         )
-        && request.resource.data.topic is string
-        && request.resource.data.topic.size() > 0
-        && request.resource.data.topic.size() <= 100
         && request.resource.data.date is string
         && request.resource.data.date.matches(
           '^\\d{4}-\\d{2}-\\d{2}$'

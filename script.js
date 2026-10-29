@@ -317,9 +317,6 @@ function createTutorialCard(tutorial) {
 
   const isJoined = Object.hasOwn(attendees, userId);
 
-  const title = document.createElement("h3");
-  title.textContent = tutorial.topic;
-
   const details = document.createElement("div");
   details.className = "tutorial-details";
 
@@ -387,7 +384,6 @@ function createTutorialCard(tutorial) {
   });
 
   card.append(
-    title,
     details,
     attendeeSection,
     button
@@ -507,14 +503,13 @@ $("tutorialForm").addEventListener("submit", async (event) => {
     return;
   }
 
-  const topic = $("topicInput").value.trim();
   const date = $("dateInput").value;
   const startTime = $("startTimeInput").value;
   const endTime = $("endTimeInput").value;
   const location = $("locationInput").value.trim();
   const joinCreator = $("joinCreatorInput").checked;
 
-  if (!topic || !date || !startTime || !endTime || !location) {
+  if (!date || !startTime || !endTime || !location) {
     alert("Please complete all fields.");
     return;
   }
@@ -541,7 +536,6 @@ $("tutorialForm").addEventListener("submit", async (event) => {
   try {
     await addDoc(tutorialsRef, {
       moduleId: selectedModuleId,
-      topic,
       date,
       startTime,
       endTime,
