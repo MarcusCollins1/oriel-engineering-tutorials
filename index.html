@@ -1,0 +1,140 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oxford Engineering Tutorials</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="script.js"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div>
+        <h1>Engineering Tutorials</h1>
+        <p>Oxford · Group tutorial planner</p>
+      </div>
+
+      <div class="auth-area">
+        <span id="userName"></span>
+        <button id="loginBtn" class="btn primary">
+          Sign in with Google
+        </button>
+        <button id="logoutBtn" class="btn secondary hidden">
+          Sign out
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="intro">
+      <div>
+        <h2>Upcoming tutorials</h2>
+        <p>
+          Organise your tutorials, find available groups,
+          and sign up with your coursemates.
+        </p>
+      </div>
+
+      <button id="newTutorialBtn" class="btn primary hidden">
+        + New tutorial
+      </button>
+    </section>
+
+    <section class="filters">
+      <div class="course-filters" id="courseFilters">
+        <button class="filter active" data-course="all">All</button>
+        <button class="filter" data-course="A1">A1</button>
+        <button class="filter" data-course="A2">A2</button>
+        <button class="filter" data-course="A3">A3</button>
+        <button class="filter" data-course="A4">A4</button>
+      </div>
+
+      <div class="filter-options">
+        <select id="moduleFilter">
+          <option value="all">All modules</option>
+        </select>
+
+        <label class="checkbox-label">
+          <input type="checkbox" id="availableOnly">
+          Available spaces only
+        </label>
+      </div>
+    </section>
+
+    <p id="statusMessage" class="status-message" role="status"></p>
+
+    <section id="tutorialList" class="tutorial-grid">
+      <p class="empty-state">Loading tutorials...</p>
+    </section>
+  </main>
+
+  <dialog id="tutorialDialog" class="modal">
+    <form id="tutorialForm">
+      <div class="modal-header">
+        <h2>Create tutorial</h2>
+        <button type="button" id="closeDialogBtn"
+                class="icon-btn" aria-label="Close">
+          &times;
+        </button>
+      </div>
+
+      <label for="courseInput">Course</label>
+      <select id="courseInput" required>
+        <option value="">Select course</option>
+        <option value="A1">A1</option>
+        <option value="A2">A2</option>
+        <option value="A3">A3</option>
+        <option value="A4">A4</option>
+      </select>
+
+      <label for="moduleInput">Module</label>
+      <input id="moduleInput" type="text"
+             placeholder="e.g. A1A" maxlength="12"
+             pattern="[A-Za-z0-9]+"
+             required>
+
+      <label for="topicInput">Topic / Problem sheet</label>
+      <input id="topicInput" type="text"
+             placeholder="e.g. Problem Sheet 3"
+             maxlength="100" required>
+
+      <div class="form-row">
+        <div>
+          <label for="dateInput">Date</label>
+          <input id="dateInput" type="date" required>
+        </div>
+        <div>
+          <label for="timeInput">Time</label>
+          <input id="timeInput" type="time" required>
+        </div>
+      </div>
+
+      <label for="locationInput">Location</label>
+      <input id="locationInput" type="text"
+             placeholder="e.g. College / Department"
+             maxlength="100" required>
+
+      <label for="capacityInput">Group size</label>
+      <select id="capacityInput">
+        <option value="2">2 students</option>
+        <option value="3" selected>3 students</option>
+      </select>
+
+      <label class="checkbox-label creator-checkbox">
+        <input type="checkbox" id="joinCreatorInput" checked>
+        Automatically sign me up
+      </label>
+
+      <div class="modal-actions">
+        <button type="button" id="cancelDialogBtn"
+                class="btn secondary">Cancel</button>
+        <button type="submit" id="createBtn"
+                class="btn primary">Create tutorial</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>

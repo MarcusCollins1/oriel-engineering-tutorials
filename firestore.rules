@@ -1,0 +1,149 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isMember() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in [
+          "student1@example.com",
+          "student2@example.com",
+          "student3@example.com",
+          "student4@example.com",
+          "student5@example.com",
+          "student6@example.com",
+          "student7@example.com"
+        ];
+    }
+
+    function validAttendees(data) {
+      return data.attendees is list
+        && data.attendees.size() <= data.capacity
+        && data.attendees.toSet().size()
+           == data.attendees.size()
+        && data.attendeeNames is map
+        && data.attendeeNames.keys().toSet()
+           == data.attendees.toSet();
+    }
+
+    function validTutorial(data) {
+      return data.keys().hasAll([
+          "course", "module", "topic",
+          "date", "time", "location",
+          "capacity", "createdBy",
+          "attendees", "attendeeNames",
+          "createdAt"
+        ])
+        && data.keys().hasOnly([
+          "course", "module", "topic",
+          "date", "time", "location",
+          "capacity", "createdBy",
+          "attendees", "attendeeNames",
+          "createdAt"
+        ])
+        && data.course in ["A1", "A2", "A3", "A4"]
+        && data.module is string
+        && data.module.matches('^A[1-4][A-Z0-9]+$')
+        && data.module.size() <= 12
+        && data.module.matches(
+            '^' + data.course + '[A-Z0-9]+$'
+        )
+        && data.topic is string
+        && data.topic.size() > 0
+        && data.topic.size() <= 100
+        && data.date is string
+        && data.date.matches(
+          '^\\d{4}-\\d{2}-\\d{2}$'
+        )
+        && data.time is string
+        && data.time.matches(
+          '^([01]\\d|2[0-3]):[0-5]\\d$'
+        )
+        && data.location is string
+        && data.location.size() > 0
+        && data.location.size() <= 100
+        && data.capacity in [2, 3]
+        && data.createdBy is string
+        && validAttendees(data);
+    }
+
+    function validSignupChange() {
+      let before = resource.data;
+      let after = request.resource.data;
+      let uid = request.auth.uid;
+
+      return after.diff(before).affectedKeys()
+          .hasOnly(["attendees", "attendeeNames"])
+        && validAttendees(after)
+
+        // Only your own membership can change.
+        && after.attendees.toSet()
+          .difference(before.attendees.toSet())
+          .hasOnly([uid])
+        && before.attendees.toSet()
+          .difference(after.attendees.toSet())
+          .hasOnly([uid])
+
+        // Exactly one member joins or leaves.
+        && (
+          (
+            !(uid in before.attendees)
+            && uid in after.attendees
+            && after.attendees.size()
+               == before.attendees.size() + 1
+            && after.attendeeNames[uid] is string
+            && after.attendeeNames[uid].size() > 0
+            && after.attendeeNames[uid].size() <= 100
+          )
+          ||
+          (
+            uid in before.attendees
+            && !(uid in after.attendees)
+            && after.attendees.size()
+               == before.attendees.size() - 1
+          )
+        )
+
+        // Names belonging to others cannot change.
+        && after.attendeeNames.diff(
+             before.attendeeNames
+           ).affectedKeys().hasOnly([uid]);
+    }
+
+    match /tutorials/{tutorialId} {
+      allow read: if isMember();
+
+      allow create: if isMember()
+        && validTutorial(request.resource.data)
+        && request.resource.data.createdBy
+           == request.auth.uid
+        && request.resource.data.createdAt
+           == request.time
+        && (
+          request.resource.data.attendees == []
+          ||
+          request.resource.data.attendees
+            == [request.auth.uid]
+        )
+        && (
+          request.resource.data.attendees.size() == 0
+          ||
+          (
+            request.resource.data
+              .attendeeNames[request.auth.uid] is string
+            && request.resource.data
+              .attendeeNames[request.auth.uid].size() > 0
+            && request.resource.data
+              .attendeeNames[request.auth.uid].size() <= 100
+          )
+        );
+
+      allow update: if isMember()
+        && validSignupChange();
+
+      allow delete: if false;
+    }
+  }
+}
