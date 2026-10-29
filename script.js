@@ -24,14 +24,14 @@ import {
 // 1. FIREBASE CONFIGURATION
 // ========================================
 
-// Replace these values with your own Firebase config.
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.firebasestorage.app",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyA_CXSZVz6meJgcJyktktWNmPtLmeFNXn0",
+    authDomain: "marcus-collins-github-website.firebaseapp.com",
+    projectId: "marcus-collins-github-website",
+    storageBucket: "marcus-collins-github-website.firebasestorage.app",
+    messagingSenderId: "328004594228",
+    appId: "1:328004594228:web:47074e07c446a328bbf861",
+    measurementId: "G-6M9HBX4E3Z"
 };
 
 const app = initializeApp(firebaseConfig);
