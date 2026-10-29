@@ -101,21 +101,31 @@
              placeholder="e.g. Problem Sheet 3"
              maxlength="100" required>
 
-      <div class="form-row">
-        <div>
-          <label for="dateInput">Date</label>
-          <input id="dateInput" type="date" required>
-        </div>
-        <div>
-          <label for="timeInput">Time</label>
-          <input id="timeInput" type="time" required>
-        </div>
-      </div>
+      
+        <label for="dateInput">Date</label>
+        <input id="dateInput" type="date" required>
 
-      <label for="locationInput">Location</label>
-      <input id="locationInput" type="text"
-             placeholder="e.g. College / Department"
-             maxlength="100" required>
+        <div class="form-row">
+        <div>
+            <label for="startTimeInput">Start time</label>
+            <input id="startTimeInput" type="time" required>
+        </div>
+
+        <div>
+            <label for="endTimeInput">End time</label>
+            <input id="endTimeInput" type="time" required>
+        </div>
+        </div>
+
+        <label for="locationInput">Location</label>
+        <input
+        id="locationInput"
+        type="text"
+        placeholder="e.g. College / Department"
+        maxlength="100"
+        required
+        >
+
 
       <label for="capacityInput">Group size</label>
       <select id="capacityInput">

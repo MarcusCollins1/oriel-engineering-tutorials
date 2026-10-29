@@ -20,7 +20,7 @@ service cloud.firestore {
 
     function validAttendees(data) {
       return data.attendees is list
-        && data.attendees.size() <= data.capacity
+        && data.attendees.size() <= 7
         && data.attendees.toSet().size()
            == data.attendees.size()
         && data.attendeeNames is map
@@ -31,25 +31,24 @@ service cloud.firestore {
     function validTutorial(data) {
       return data.keys().hasAll([
           "course", "module", "topic",
-          "date", "time", "location",
-          "capacity", "createdBy",
+          "date", "startTime", "endTime",
+          "location", "createdBy",
           "attendees", "attendeeNames",
           "createdAt"
         ])
         && data.keys().hasOnly([
           "course", "module", "topic",
-          "date", "time", "location",
-          "capacity", "createdBy",
+          "date", "startTime", "endTime",
+          "location", "createdBy",
           "attendees", "attendeeNames",
           "createdAt"
         ])
         && data.course in ["A1", "A2", "A3", "A4"]
         && data.module is string
-        && data.module.matches('^A[1-4][A-Z0-9]+$')
-        && data.module.size() <= 12
         && data.module.matches(
-            '^' + data.course + '[A-Z0-9]+$'
+          '^' + data.course + '[A-Z0-9]+$'
         )
+        && data.module.size() <= 12
         && data.topic is string
         && data.topic.size() > 0
         && data.topic.size() <= 100
@@ -57,14 +56,18 @@ service cloud.firestore {
         && data.date.matches(
           '^\\d{4}-\\d{2}-\\d{2}$'
         )
-        && data.time is string
-        && data.time.matches(
+        && data.startTime is string
+        && data.startTime.matches(
           '^([01]\\d|2[0-3]):[0-5]\\d$'
         )
+        && data.endTime is string
+        && data.endTime.matches(
+          '^([01]\\d|2[0-3]):[0-5]\\d$'
+        )
+        && data.endTime > data.startTime
         && data.location is string
         && data.location.size() > 0
         && data.location.size() <= 100
-        && data.capacity in [2, 3]
         && data.createdBy is string
         && validAttendees(data);
     }
@@ -78,15 +81,14 @@ service cloud.firestore {
           .hasOnly(["attendees", "attendeeNames"])
         && validAttendees(after)
 
-        // Only your own membership can change.
         && after.attendees.toSet()
           .difference(before.attendees.toSet())
           .hasOnly([uid])
+
         && before.attendees.toSet()
           .difference(after.attendees.toSet())
           .hasOnly([uid])
 
-        // Exactly one member joins or leaves.
         && (
           (
             !(uid in before.attendees)
@@ -106,7 +108,6 @@ service cloud.firestore {
           )
         )
 
-        // Names belonging to others cannot change.
         && after.attendeeNames.diff(
              before.attendeeNames
            ).affectedKeys().hasOnly([uid]);

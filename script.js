@@ -59,7 +59,6 @@ const tutorialDialog = $("tutorialDialog");
 const tutorialForm = $("tutorialForm");
 const tutorialList = $("tutorialList");
 const moduleFilter = $("moduleFilter");
-const availableOnly = $("availableOnly");
 const statusMessage = $("statusMessage");
 
 // ========================================
@@ -161,7 +160,6 @@ document.querySelectorAll(".filter").forEach((button) => {
 });
 
 moduleFilter.addEventListener("change", renderTutorials);
-availableOnly.addEventListener("change", renderTutorials);
 
 function updateModuleFilter() {
   const previousValue = moduleFilter.value;
@@ -203,7 +201,7 @@ function renderTutorials() {
     return;
   }
 
-  const today = getLocalDate();
+  const now = new Date();
 
   const filtered = tutorials.filter((tutorial) => {
     const matchesCourse =
@@ -214,20 +212,17 @@ function renderTutorials() {
       moduleFilter.value === "all" ||
       tutorial.module === moduleFilter.value;
 
-    const hasSpace =
-      !availableOnly.checked ||
-      tutorial.attendees.length < tutorial.capacity;
-
-    const isUpcoming = tutorial.date >= today;
+    const endDateTime = new Date(
+      `${tutorial.date}T${tutorial.endTime}:00`
+    );
 
     return matchesCourse &&
            matchesModule &&
-           hasSpace &&
-           isUpcoming;
+           endDateTime > now;
   });
 
   if (filtered.length === 0) {
-    showEmptyState("No tutorials match your filters.");
+    showEmptyState("No upcoming tutorials match your filters.");
     return;
   }
 
@@ -241,13 +236,8 @@ function createTutorialCard(tutorial) {
   card.className = "tutorial-card";
 
   const count = tutorial.attendees.length;
-  const capacity = tutorial.capacity;
-  const isFull = count >= capacity;
   const isJoined = tutorial.attendees.includes(currentUser.uid);
 
-  const percentage = Math.min(100, (count / capacity) * 100);
-
-  // Use textContent for user-provided text to prevent HTML injection.
   const top = document.createElement("div");
   top.className = "card-top";
 
@@ -277,46 +267,32 @@ function createTutorialCard(tutorial) {
   });
 
   addDetail(details, "Date", dateText);
-  addDetail(details, "Time", tutorial.time);
+
+  addDetail(
+    details,
+    "Time",
+    `${tutorial.startTime} – ${tutorial.endTime}`
+  );
+
   addDetail(details, "Location", tutorial.location);
 
-  const capacitySection = document.createElement("div");
+  const attendeeSection = document.createElement("div");
+  attendeeSection.className = "attendees";
 
-  const capacityHeader = document.createElement("div");
-  capacityHeader.className = "capacity-header";
-
-  const capacityTitle = document.createElement("span");
-  capacityTitle.textContent = "Group members";
-
-  const capacityCount = document.createElement("span");
-  capacityCount.textContent = `${count} / ${capacity}`;
-
-  capacityHeader.append(capacityTitle, capacityCount);
-
-  const bar = document.createElement("div");
-  bar.className = "capacity-bar";
-
-  const fill = document.createElement("div");
-  fill.className = "capacity-fill";
-  fill.style.width = `${percentage}%`;
-
-  if (isFull) {
-    fill.classList.add("full");
-  }
-
-  bar.appendChild(fill);
-  capacitySection.append(capacityHeader, bar);
-
-  const attendees = document.createElement("div");
-  attendees.className = "attendees";
+  const countText = document.createElement("strong");
+  countText.textContent =
+    `${count} ${count === 1 ? "student" : "students"} attending`;
 
   const names = tutorial.attendees.map((uid) => {
     return tutorial.attendeeNames?.[uid] || "Student";
   });
 
-  attendees.textContent = names.length
-    ? "Attending: " + names.join(", ")
+  const namesText = document.createElement("p");
+  namesText.textContent = names.length
+    ? names.join(", ")
     : "Nobody has signed up yet.";
+
+  attendeeSection.append(countText, namesText);
 
   const actions = document.createElement("div");
   actions.className = "card-actions";
@@ -333,10 +309,6 @@ function createTutorialCard(tutorial) {
       await leaveTutorial(tutorial.id);
       actionBtn.disabled = false;
     });
-  } else if (isFull) {
-    actionBtn.textContent = "Group full";
-    actionBtn.classList.add("secondary");
-    actionBtn.disabled = true;
   } else {
     actionBtn.textContent = "Join tutorial";
     actionBtn.classList.add("primary");
@@ -354,8 +326,7 @@ function createTutorialCard(tutorial) {
     top,
     title,
     details,
-    capacitySection,
-    attendees,
+    attendeeSection,
     actions
   );
 
@@ -413,9 +384,9 @@ tutorialForm.addEventListener("submit", async (event) => {
   const moduleName = $("moduleInput").value.trim().toUpperCase();
   const topic = $("topicInput").value.trim();
   const date = $("dateInput").value;
-  const time = $("timeInput").value;
+  const startTime = $("startTimeInput").value;
+  const endTime = $("endTimeInput").value;
   const location = $("locationInput").value.trim();
-  const capacity = Number($("capacityInput").value);
   const joinCreator = $("joinCreatorInput").checked;
 
   if (!["A1", "A2", "A3", "A4"].includes(course)) {
@@ -428,13 +399,22 @@ tutorialForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  if (!topic || !location || !date || !time) {
+  if (!topic || !location || !date || !startTime || !endTime) {
     alert("Please complete all fields.");
     return;
   }
 
-  if (new Date(`${date}T${time}:00`) <= new Date()) {
-    alert("Please choose a future date and time.");
+  if (endTime <= startTime) {
+    alert("End time must be later than start time.");
+    return;
+  }
+
+  const startDateTime = new Date(
+    `${date}T${startTime}:00`
+  );
+
+  if (startDateTime <= new Date()) {
+    alert("Please choose a future start time.");
     return;
   }
 
@@ -454,9 +434,9 @@ tutorialForm.addEventListener("submit", async (event) => {
       module: moduleName,
       topic,
       date,
-      time,
+      startTime,
+      endTime,
       location,
-      capacity,
       createdBy: user.uid,
       attendees,
       attendeeNames,
@@ -465,6 +445,7 @@ tutorialForm.addEventListener("submit", async (event) => {
 
     tutorialDialog.close();
     tutorialForm.reset();
+
     showStatus("Tutorial created successfully.");
   } catch (error) {
     alert("Could not create tutorial: " + error.message);
@@ -480,6 +461,7 @@ tutorialForm.addEventListener("submit", async (event) => {
 
 async function joinTutorial(tutorialId) {
   const user = currentUser;
+
   if (!user) {
     alert("Please sign in first.");
     return;
@@ -502,14 +484,12 @@ async function joinTutorial(tutorialId) {
         throw new Error("You are already signed up.");
       }
 
-      if (attendees.length >= tutorial.capacity) {
-        throw new Error("This group is already full.");
-      }
+      const tutorialEnd = new Date(
+        `${tutorial.date}T${tutorial.endTime}:00`
+      );
 
-      if (
-        new Date(`${tutorial.date}T${tutorial.time}:00`) <= new Date()
-      ) {
-        throw new Error("This tutorial has already started.");
+      if (tutorialEnd <= new Date()) {
+        throw new Error("This tutorial has already ended.");
       }
 
       transaction.update(tutorialDoc, {
