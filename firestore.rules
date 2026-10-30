@@ -4,24 +4,16 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // MODULES
     match /modules/{moduleId} {
-
       allow read: if true;
 
       allow create: if
         moduleId.matches('^A[1-4][A-Z0-9]+$')
         && request.resource.data.keys().hasOnly([
-          "course",
-          "description",
-          "createdBy",
-          "createdAt"
+          "course", "description", "createdBy", "createdAt"
         ])
         && request.resource.data.keys().hasAll([
-          "course",
-          "description",
-          "createdBy",
-          "createdAt"
+          "course", "description", "createdBy", "createdAt"
         ])
         && request.resource.data.course in [
           "A1", "A2", "A3", "A4"
@@ -34,36 +26,29 @@ service cloud.firestore {
         && request.resource.data.createdBy is string
         && request.resource.data.createdAt == request.time;
 
-      allow update, delete: if false;
+      // Edit module description only.
+      allow update: if
+        request.resource.data.diff(resource.data)
+          .affectedKeys().hasOnly(["description"])
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 100;
+
+      allow delete: if true;
     }
 
-    // TUTORIALS
     match /tutorials/{tutorialId} {
-
       allow read: if true;
 
       allow create: if
         request.resource.data.keys().hasOnly([
-          "moduleId",
-          "date",
-          "startTime",
-          "endTime",
-          "location",
-          "attendees",
-          "createdBy",
-          "createdByName",
-          "createdAt"
+          "moduleId", "date", "startTime", "endTime",
+          "location", "attendees", "createdBy",
+          "createdByName", "createdAt"
         ])
         && request.resource.data.keys().hasAll([
-          "moduleId",
-          "date",
-          "startTime",
-          "endTime",
-          "location",
-          "attendees",
-          "createdBy",
-          "createdByName",
-          "createdAt"
+          "moduleId", "date", "startTime", "endTime",
+          "location", "attendees", "createdBy",
+          "createdByName", "createdAt"
         ])
         && request.resource.data.moduleId is string
         && exists(
@@ -91,15 +76,39 @@ service cloud.firestore {
         && request.resource.data.createdByName is string
         && request.resource.data.createdAt == request.time;
 
-      // Only the attendees field can be updated.
-      // Without authentication, this does not establish
-      // who is making the change.
+      // Attendance changes or tutorial scheduling edits.
       allow update: if
-        request.resource.data.diff(resource.data)
-          .affectedKeys().hasOnly(["attendees"])
-        && request.resource.data.attendees is map;
+        (
+          request.resource.data.diff(resource.data)
+            .affectedKeys().hasOnly(["attendees"])
+          && request.resource.data.attendees is map
+        )
+        ||
+        (
+          request.resource.data.diff(resource.data)
+            .affectedKeys().hasOnly([
+              "date", "startTime", "endTime", "location"
+            ])
+          && request.resource.data.date is string
+          && request.resource.data.date.matches(
+            '^\\d{4}-\\d{2}-\\d{2}$'
+          )
+          && request.resource.data.startTime is string
+          && request.resource.data.startTime.matches(
+            '^([01]\\d|2[0-3]):[0-5]\\d$'
+          )
+          && request.resource.data.endTime is string
+          && request.resource.data.endTime.matches(
+            '^([01]\\d|2[0-3]):[0-5]\\d$'
+          )
+          && request.resource.data.endTime >
+             request.resource.data.startTime
+          && request.resource.data.location is string
+          && request.resource.data.location.size() > 0
+          && request.resource.data.location.size() <= 100
+        );
 
-      allow delete: if false;
+      allow delete: if true;
     }
   }
 }

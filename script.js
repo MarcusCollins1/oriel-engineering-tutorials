@@ -8,6 +8,13 @@ import {
   doc,
   setDoc,
   addDoc,
+  getDoc,
+  getDocs,
+  updateDoc,
+  deleteDoc,
+  writeBatch,
+  query,
+  where,
   onSnapshot,
   runTransaction,
   serverTimestamp
@@ -57,6 +64,8 @@ let modules = [];
 let tutorials = [];
 let selectedCourse = "all";
 let selectedModuleId = null;
+let editingModuleId = null;
+let editingTutorialId = null;
 
 const expandedModules = new Set();
 
@@ -309,7 +318,29 @@ header.append(titleArea, meta);
     openTutorialDialog(module);
   });
 
-  actions.appendChild(addBtn);
+  
+  const editModuleBtn = document.createElement("button");
+  editModuleBtn.className = "btn secondary";
+  editModuleBtn.textContent = "Edit module";
+
+  editModuleBtn.addEventListener("click", () => {
+    openEditModuleDialog(module);
+  });
+
+  const deleteModuleBtn = document.createElement("button");
+  deleteModuleBtn.className = "btn danger";
+  deleteModuleBtn.textContent = "Delete module";
+
+  deleteModuleBtn.addEventListener("click", async () => {
+    await deleteModule(module.id);
+  });
+
+  actions.append(
+    addBtn,
+    editModuleBtn,
+    deleteModuleBtn
+  );
+
   content.appendChild(actions);
 
   const tutorialList = document.createElement("div");
@@ -411,11 +442,34 @@ function createTutorialCard(tutorial) {
     }
   });
 
+  
+  const editBtn = document.createElement("button");
+  editBtn.className = "btn secondary";
+  editBtn.textContent = "Edit";
+
+  editBtn.addEventListener("click", () => {
+    openEditTutorialDialog(tutorial);
+  });
+
+  const deleteBtn = document.createElement("button");
+  deleteBtn.className = "btn danger";
+  deleteBtn.textContent = "Delete";
+
+  deleteBtn.addEventListener("click", async () => {
+    await deleteTutorial(tutorial.id);
+  });
+
+  const managementActions = document.createElement("div");
+  managementActions.className = "management-actions";
+  managementActions.append(editBtn, deleteBtn);
+
   card.append(
     details,
     attendeeSection,
-    button
+    button,
+    managementActions
   );
+
 
   return card;
 }
@@ -666,6 +720,173 @@ async function leaveTutorial(tutorialId) {
     alert("Could not leave tutorial: " + error.message);
   }
 }
+
+
+// ========================================
+// EDIT MODULE
+// ========================================
+
+function openEditModuleDialog(module) {
+  editingModuleId = module.id;
+
+  $("editModuleLabel").textContent = `Module: ${module.id}`;
+  $("editModuleDescription").value =
+    module.description || "";
+
+  $("editModuleDialog").showModal();
+}
+
+$("editModuleForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!editingModuleId) return;
+
+  const description = $("editModuleDescription").value.trim();
+  const button = $("saveModuleBtn");
+
+  button.disabled = true;
+
+  try {
+    await updateDoc(doc(db, "modules", editingModuleId), {
+      description
+    });
+
+    $("editModuleDialog").close();
+    editingModuleId = null;
+    showStatus("Module updated successfully.");
+  } catch (error) {
+    alert("Could not update module: " + error.message);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+// ========================================
+// DELETE MODULE AND ITS TUTORIALS
+// ========================================
+
+async function deleteModule(moduleId) {
+  const confirmed = confirm(
+    `Delete ${moduleId} and ALL its tutorial slots?\n\n` +
+    "This will also delete every signup in the module.\n" +
+    "This cannot be undone."
+  );
+
+  if (!confirmed) return;
+
+  try {
+    // Find all tutorials belonging to the module.
+    const tutorialsQuery = query(
+      tutorialsRef,
+      where("moduleId", "==", moduleId)
+    );
+
+    const snapshot = await getDocs(tutorialsQuery);
+
+    // Firestore batches have a write-operation limit.
+    // This app is intended for a small number of tutorials.
+    // Refuse oversized deletions rather than partially deleting.
+    if (snapshot.size > 400) {
+      throw new Error(
+        "Too many tutorials to delete in one operation."
+      );
+    }
+
+    const batch = writeBatch(db);
+
+    snapshot.forEach((tutorialDoc) => {
+      batch.delete(tutorialDoc.ref);
+    });
+
+    batch.delete(doc(db, "modules", moduleId));
+
+    await batch.commit();
+
+    expandedModules.delete(moduleId);
+    showStatus(`Module ${moduleId} deleted.`);
+  } catch (error) {
+    alert("Could not delete module: " + error.message);
+  }
+}
+
+// ========================================
+// EDIT TUTORIAL
+// ========================================
+
+function openEditTutorialDialog(tutorial) {
+  editingTutorialId = tutorial.id;
+
+  $("editDateInput").value = tutorial.date;
+  $("editStartTimeInput").value = tutorial.startTime;
+  $("editEndTimeInput").value = tutorial.endTime;
+  $("editLocationInput").value = tutorial.location;
+
+  $("editTutorialDialog").showModal();
+}
+
+$("editTutorialForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!editingTutorialId) return;
+
+  const date = $("editDateInput").value;
+  const startTime = $("editStartTimeInput").value;
+  const endTime = $("editEndTimeInput").value;
+  const location = $("editLocationInput").value.trim();
+
+  if (!date || !startTime || !endTime || !location) {
+    alert("Please complete all fields.");
+    return;
+  }
+
+  if (endTime <= startTime) {
+    alert("End time must be later than start time.");
+    return;
+  }
+
+  const button = $("saveTutorialBtn");
+  button.disabled = true;
+
+  try {
+    await updateDoc(doc(db, "tutorials", editingTutorialId), {
+      date,
+      startTime,
+      endTime,
+      location
+    });
+
+    $("editTutorialDialog").close();
+    editingTutorialId = null;
+
+    showStatus("Tutorial updated successfully.");
+  } catch (error) {
+    alert("Could not update tutorial: " + error.message);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+// ========================================
+// DELETE TUTORIAL
+// ========================================
+
+async function deleteTutorial(tutorialId) {
+  const confirmed = confirm(
+    "Delete this tutorial slot?\n\n" +
+    "All its signups will be lost.\n" +
+    "This cannot be undone."
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await deleteDoc(doc(db, "tutorials", tutorialId));
+    showStatus("Tutorial deleted successfully.");
+  } catch (error) {
+    alert("Could not delete tutorial: " + error.message);
+  }
+}
+
 
 // ========================================
 // DATE HELPER

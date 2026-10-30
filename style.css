@@ -457,3 +457,46 @@ input:focus, select:focus {
     text-align: right;
   }
 }
+
+
+/* Edit and delete controls */
+
+.btn.danger {
+  background: #fff0f0;
+  color: #b42332;
+  border: 1px solid #f1c9cd;
+}
+
+.btn.danger:hover {
+  background: #ffe0e3;
+}
+
+.module-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.management-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.management-actions .btn {
+  flex: 1;
+  width: auto;
+  margin-top: 0;
+}
+
+@media (max-width: 650px) {
+  .module-actions {
+    justify-content: stretch;
+  }
+
+  .module-actions .btn {
+    flex: 1;
+  }
+}

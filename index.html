@@ -154,5 +154,71 @@
       </div>
     </form>
   </dialog>
+
+  
+  <!-- EDIT MODULE -->
+  <dialog id="editModuleDialog" class="modal">
+    <form id="editModuleForm">
+      <div class="modal-header">
+        <h2>Edit module</h2>
+        <button type="button" class="icon-btn"
+                data-close="editModuleDialog"
+                aria-label="Close">&times;</button>
+      </div>
+
+      <p id="editModuleLabel" class="selected-module"></p>
+
+      <label for="editModuleDescription">
+        Topic / Description
+      </label>
+      <input id="editModuleDescription"
+            type="text" maxlength="100">
+
+      <div class="modal-actions">
+        <button type="button" class="btn secondary"
+                data-close="editModuleDialog">Cancel</button>
+        <button type="submit" id="saveModuleBtn"
+                class="btn primary">Save changes</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- EDIT TUTORIAL -->
+  <dialog id="editTutorialDialog" class="modal">
+    <form id="editTutorialForm">
+      <div class="modal-header">
+        <h2>Edit tutorial</h2>
+        <button type="button" class="icon-btn"
+                data-close="editTutorialDialog"
+                aria-label="Close">&times;</button>
+      </div>
+
+      <label for="editDateInput">Date</label>
+      <input id="editDateInput" type="date" required>
+
+      <div class="form-row">
+        <div>
+          <label for="editStartTimeInput">Start time</label>
+          <input id="editStartTimeInput" type="time" required>
+        </div>
+        <div>
+          <label for="editEndTimeInput">End time</label>
+          <input id="editEndTimeInput" type="time" required>
+        </div>
+      </div>
+
+      <label for="editLocationInput">Location</label>
+      <input id="editLocationInput" type="text"
+            maxlength="100" required>
+
+      <div class="modal-actions">
+        <button type="button" class="btn secondary"
+                data-close="editTutorialDialog">Cancel</button>
+        <button type="submit" id="saveTutorialBtn"
+                class="btn primary">Save changes</button>
+      </div>
+    </form>
+  </dialog>
+
 </body>
 </html>
