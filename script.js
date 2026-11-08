@@ -216,7 +216,7 @@ function renderModules() {
     const dateB = getModuleEarilestDate(b.id);
 
     // Modules without upcoming tutorials go last
-    if (!dataA && !dateB) {
+    if (!dateA && !dateB) {
       return a.id.localeCompare(b.id);
     }
 
