@@ -210,8 +210,27 @@ h1 {
 }
 
 .module-meta {
-  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.module-date {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.module-count {
+  font-size: 12px;
   color: var(--muted);
+}
+
+.module-joined .module-date {
+  color: #12683f;
 }
 
 .module-content {
@@ -400,6 +419,15 @@ input:focus, select:focus {
 
   .module-header {
     padding: 16px;
+    gap: 10px;
+  }
+
+  .module-meta {
+    min-width: 100px;
+  }
+
+  .module-date {
+    font-size: 13px;
   }
 
   .module-content {

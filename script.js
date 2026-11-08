@@ -192,13 +192,47 @@ document.querySelectorAll(".filter").forEach((button) => {
 // RENDER MODULES
 // ========================================
 
+function getModuleEarilestDate(moduleId) {
+  const now = new Date();
+
+  const dates = tutorials.filter((tutorial) => {
+    if (tutorial.moduleId !== moduleId) return false;
+
+    const end = new Date(`${tutorial.date}T${tutorial.endTime}:00`);
+    return end > now;
+  }).map((tutorial) => tutorial.date).sort();
+
+  return dates.length > 0 ? dates[0] : null;
+}
+
 function renderModules() {
   moduleList.replaceChildren();
 
   const filtered = modules.filter((module) =>
     selectedCourse === "all" ||
     module.course === selectedCourse
-  );
+  ).sort((a, b) => {
+    const dateA = getModuleEarilestDate(a.id);
+    const dateB = getModuleEarilestDate(b.id);
+
+    // Modules without upcoming tutorials go last
+    if (!dataA && !dateB) {
+      return a.id.localeCompare(b.id);
+    }
+
+    if (!dateA) return 1;
+    if (!dateB) return -1;
+
+    // Earliest date goes first
+    const dateComparison = dateA.localeCompare(dateB);
+
+    if (dateComparison !== 0) {
+      return dateComparison;
+    }
+
+    // Alphabetical when dates are the same
+    return a.id.localeCompare(b.id);
+  });
 
   if (filtered.length === 0) {
     const empty = document.createElement("p");
@@ -261,13 +295,33 @@ function createModuleCard(module) {
 
   titleArea.append(badge, description);
 
-  const meta = document.createElement("span");
+  const meta = document.createElement("div");
   meta.className = "module-meta";
 
-  const count = upcomingTutorials.length;  
-  meta.textContent = hasJoined
+  const earliestDate = getModuleEarilestDate(module.id);
+
+  const dateLabel = document.createElement("span");
+  dateLabel.className = "module-date";
+
+  if (earliestDate) {
+    dateLabel.textContent = new Date(`${earliestDate}T12:00:00`).toLocaleDateString("en-GB", {
+      weekday: "short",
+      day: "numeric",
+      month: "short"
+    });
+  } else {
+    dateLabel.textContent = "No upcoming tutorials";
+  }
+
+  const count = upcomingTutorials.length;
+
+  const countLabel = document.createElement("span");
+  countLabel.className = "module-count";
+  countLabel.textContent = hasJoined
     ? `${joinedTutorials.length} joined · ${count} upcoming`
     : `${count} upcoming ${count === 1 ? "tutorial" : "tutorials"}`;
+  
+  meta.append(dateLabel, countLabel);
 
 
   
@@ -278,7 +332,7 @@ function createModuleCard(module) {
     titleArea.appendChild(joinedBadge);
   }
 
-header.append(titleArea, meta);
+  header.append(titleArea, meta);
 
 
   const content = document.createElement("div");
